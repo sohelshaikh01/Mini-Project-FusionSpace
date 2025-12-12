@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
 const postSchema = new Schema(
   {
@@ -13,20 +14,30 @@ const postSchema = new Schema(
 	  isPublic: {
 		type: Boolean,
 		required: true,
-		default: null
+		default: true
 	  },
-	  userId: {
+	  owner: {
 		type: mongoose.Types.ObjectId,
 		ref: "User",
-		type: required
+		required: true
 	  },
 	  communityId: {
 		type: mongoose.Types.ObjectId,
 		ref: "",
 		default: null
+	  },
+	  likeCount: {
+		type: Number,
+		default: 0
+	  },
+	  commentCount: {
+		type: Number,
+		default: 0
 	  }
   },
   { timestamps: true }
 );
+
+postSchema.plugin(mongooseAggregatePaginate);
 
 export const Post = mongoose.model("Post", postSchema);

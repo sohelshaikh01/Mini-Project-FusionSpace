@@ -1,35 +1,59 @@
-// Post = auth
-// get postid, content and user
-// validate fields
-// check is post exists
-// create new comments - content, postid, userid
-// return res
-const createComment = async(req, res) => {
-    const { content, postId } = req.body;
+import mongoose from "mongoose";
+import { ApiError } from "../utils/ApiError.js";
+import { ApiResponse } from "../utils/ApiResponse.js";
+import { asyncHandler } from "../utils/asyncHandler.js";
 
-    if(!(content || postId)) {
-        throw new ApiError(400, "Comment is required");
+import { Comment } from "../models/comment.models.js";
+import { Post } from "../models/post.models.js";
+import { Like } from "../models/like.models.js";
+
+
+// Post = auth --
+const createComment = asyncHandler(async(req, res) => {
+    
+    const { postId } = req.params;
+    const { content } = req.body;
+
+    if(!mongoose.Types.ObjectId.isValid(postId)) {
+        throw new ApiError(400, "Invalid post ID");
+    }
+
+    if(!content || content.trim() == "") {
+        throw new ApiError(400, "Comment content cannot be empty");
     }
 
     const userId = req.user._id;
 
+    const isPost = await Post.findById(postId);
+
+    if(!isPost) {
+        throw new ApiError(404, "Post not found");
+    }
+
+    isPost.commentCount = isPost.commentCount+1;
+    await isPost.save();
+
+
+    // Increasing LikeCount
+    // Wrapping all in promise
+    // Mentioning all this in linkedin post
     const comment = await Comment.create({
         content,
-        owner: userId,
+        ownerId: userId,
         postId
     });
 
-    (!comment) {
+    if(!comment) {
         throw new ApiError("Failed to create comment");
     }
 
-    return
-        res.status(200)
-            .json(
-                new ApiResponse(201, comment, "Comment is created Successfully")
-            )
+    return res
+        .status(201)
+        .json(
+            new ApiResponse(201, comment, "Comment added successfully")
+        );
 
-}
+});
 
 // Get = public
 // getpost id and videoid, page, limit
@@ -37,24 +61,80 @@ const createComment = async(req, res) => {
 // fetch all comments of post, paginate and sort by latest
 // if comments exists, user and likes
 // Else return empty array
-const getComments = async(req, res) => {
+const getComments = asyncHandler( async(req, res) => {
 
-}
+    const { postId } = req.params;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 10;
+
+    const skip = (page - 1) * limit;
+
+
+    if(!mongoose.Types.ObjectId.isValid(postId)) {
+        throw new ApiError(400, "Invalid post ID");
+    }
+
+    const comments = await Comment.find({postId})
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1});
+
+    if(!comments || comments.length === 0) {
+        return res
+            .status(404)
+            .json(new ApiResponse(404, [], "No comments found for this post"));
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, comments, "Comments fetched successafully"));
+});
 
 // Post = auth
 // const replyComment = async(req, res) => {
 // }
+// *************************
 
-// Patch = auth owner only
+// Patch = auth owner only --
 // get commentId, content
 // validate comId, content - is empty
 // find comment by comId
 // check comm.ownerId = login userId
 // update content and set updated timestamp
 // save and return updated comment
-const editComment = async(req, res) => {
 
-}
+const editComment = asyncHandler(async(req, res) => {
+
+    const { commentId } = req.params;
+    const { content } = req.body;
+
+    if(!mongoose.Types.ObjectId.isValid(commentId)) {
+        throw new ApiError(400, "Comment content cannot be empty");
+    }
+
+    if(!content || content.trim() == "" ) {
+        throw new ApiError(400, "Comment content cannot be empty");
+    }
+    
+    const isComment = await Comment.findById(commentId);
+
+    if(!isComment) {
+        throw new ApiError(404, "Comment Not Found!");
+    }
+
+    if (isComment.ownerId.toString() !== req.user._id.toString()) {
+        throw new ApiError(403, "You are not Autorized to update this comment");
+    }
+
+    isComment.content = content;
+    await isComment.save();
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(200, isComment, "Comment updated Successfully")
+        );
+})
 
 // Patch = auth owner only
 // get comId
@@ -64,9 +144,45 @@ const editComment = async(req, res) => {
 // delete comment
 // remove comment from likes collection
 // return success message
-const deleteComment = async(req, res) => {
 
-}
+const deleteComment = asyncHandler(async(req, res) => {
+
+    // Delete like related this
+    const { commentId } = req.params;
+
+    if(!mongoose.Types.ObjectId.isValid(commentId)) {
+        throw new ApiError(400, "Invalid comment ID");
+    }
+
+    const userId = req.user._id;
+    const isComment = await Comment.findById(commentId);
+
+    if(!isComment) {
+        throw new ApiError(404, 'Comment Not Found!');
+    }
+
+    if(userId.toString() !== isComment.ownerId.toString()) {
+        throw new ApiError(403, "You are not authorized to delete this comment");
+    }
+
+    const postId = isComment.postId;
+    const isPost = await Post.findById( postId );
+    isPost.commentCount = Math.max(0, isPost.commentCount - 1);
+    await isPost.save();
+
+    await Like.deleteMany({commentId});
+
+    const deletedComment = await isComment.deleteOne();
+
+    if(deletedComment.deleteCount === 0) {
+        throw new ApiError(500, "Failed to delete comment");
+    }
+
+    return res
+        .status(200)
+        .json(new ApiResponse(200, {}, "Comment deleted successfully"));
+
+});
 
 export {
     // replyComment,

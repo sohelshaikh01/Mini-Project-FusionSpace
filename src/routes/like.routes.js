@@ -1,18 +1,17 @@
 import { Router } from "express";
 import {
     togglePostLike,
-    deletePostLike,
     toggleCommentLike,
-    deleteCommentLike
 } from "../controllers/like.controller.js";
+import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
 // auth all
 router.route("/toggle/p/:postId")
-    .post(togglePostLike)
+    .post(verifyJWT, togglePostLike)
 router.route("/toggle/c/:commentId")
-    .post(toggleCommentLike)
+    .post(verifyJWT, toggleCommentLike)
 
 
 export default router;

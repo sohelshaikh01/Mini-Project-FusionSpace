@@ -5,20 +5,40 @@ import {
     getCommunity,
     updateCommunity,
     deleteCommunity
-} from "../controllers/community.controller.js"
+} from "../controllers/community.controller.js";
+import isCommunityOwner from "../middlewares/isCommunityOwner.js";
+
+import { verifyJWT } from "../middlewares/auth.middleware.js";
+import { upload } from "../middlewares/multer.middleware.js";
 
 const router = Router();
 
 // auth
-router.route("/").post(createCommunity);
-// auth
-router.route("/").get(getMyCommunity);
+router.route("/")
+    .post(verifyJWT,
+        upload.fields([
+            {
+                name: "avatarFile",
+                maxCount: 1
+            }
+        ]), createCommunity)
+    .get(verifyJWT, getMyCommunity);
+
 // auth + Join before details
-router.route("/:communityId").get(getCommunity);
+router.route("/:communityId").get(verifyJWT, getCommunity);
+
 // auth owner only
-router.route("/:communityId").patch(updateCommunity);
+router.route("/:communityId").patch(verifyJWT,
+        upload.fields([
+            {
+                name: "avatarFile",
+                maxCount: 1
+            }
+        ]), createCommunity)
+    .get(verifyJWT, isCommunityOwner, updateCommunity);
+
 // auth owner only
-router.route("/:communityId").delete(deleteCommunity);
+router.route("/:communityId").delete(verifyJWT, isCommunityOwner, deleteCommunity);
 
 
 export default router;

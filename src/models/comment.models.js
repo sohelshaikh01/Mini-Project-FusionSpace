@@ -1,7 +1,6 @@
 import mongoose, { Schema } from "mongoose";
 import mongooseAggregatePaginate from "mongoose-aggregate-paginate-v2";
 
-
 const commentSchema = new Schema(
     {
         content: {
@@ -12,17 +11,18 @@ const commentSchema = new Schema(
             type: Schema.Types.ObjectId,
             ref: "User"
         },
-        // parentComment: {
-        //     type: mongoose.Schema.Types.ObjectId,
-        //     ref: "Comment",
-        //     default: null
-        // },
+        likeCount: {
+            type: Number,
+            default: 0
+        },
         postId: {
-            type: mongoose.Schema.Types.ObjectId,
+            type: Schema.Types.ObjectId,
             ref: "Post",
         }
     },
     { timestamps: true }
-)
+);
+
+commentSchema.plugin(mongooseAggregatePaginate)
 
 export const Comment = mongoose.model("Comment", commentSchema);

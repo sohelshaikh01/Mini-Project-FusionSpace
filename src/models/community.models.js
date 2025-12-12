@@ -1,16 +1,17 @@
-import mongoose, { Schema } from mongoose;
+import mongoose, { Schema } from "mongoose";
 
-const communityNameSchema = new Schema(
+const communitySchema = new Schema(
   {
     communityName: {
       type: String,
       required: true,
-      lowercase: true
+      lowercase: true,
+      unique: true
     },
     avatar: {
       type: String,
     },
-    ownerid: {
+    ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true
@@ -25,4 +26,4 @@ const communityNameSchema = new Schema(
   { timestamps: true}
 );
 
-export default communityNameSchema = mongoose.model("CommunityName", communityNameSchema);
+export const Community = mongoose.model("Community", communitySchema);

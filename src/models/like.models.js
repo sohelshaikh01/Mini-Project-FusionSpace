@@ -1,10 +1,3 @@
-Like {
-  likedBy: { type: ObjectId, ref: "User" }
-  postId: { type: ObjectId, ref: "Post", default: null }
-  commentId: { type: ObjectId, ref: "Comment", default: null }
-  createdAt: Date (default: Date.now)
-}
-
 import mongoose, { Schema } from "mongoose";
 
 const likeSchema = new Schema(
@@ -28,4 +21,4 @@ const likeSchema = new Schema(
   { timestamps: true }
 );
 
-export const Like = mongoose.model("Like", "likeSchema");
+export const Like = mongoose.model("Like", likeSchema);

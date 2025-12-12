@@ -25,10 +25,10 @@ const generateRefreshToken = async function(userId) {
 }
 
 
+// done
 const registerUser = asyncHandler ( async(req, res) => {
 
-    console.log(req.body);
-    
+  
     const { fullName, email, username, password, bio } = req.body;
 
     if([fullName, email, username, password, bio].some((field) => field?.trim() === "" )) {
@@ -80,6 +80,8 @@ const registerUser = asyncHandler ( async(req, res) => {
     
 });
 
+
+// done
 const loginUser = asyncHandler (async(req, res) => {
 
     // get data
@@ -130,7 +132,10 @@ const loginUser = asyncHandler (async(req, res) => {
 
 });
 
+
+// not returning properly
 const logoutUser = asyncHandler ( async(req, res) => {
+    
     const userId = req.user._id;
 
     User.findByIdAndUpdate(
@@ -157,12 +162,14 @@ const logoutUser = asyncHandler ( async(req, res) => {
     );
 });
 
+
 const UserProfile = asyncHandler ( async(req, res) => {
     return res
     .status(200)
     .json( new ApiResponse(200, req.user, "Current user details fetched successfully"));
     // get user details by aggregate
 });
+
 
 const getUserProfile = asyncHandler ( async(req, res) => {
     // get username
@@ -179,6 +186,7 @@ const updateMyProfile = asyncHandler ( async(req, res) => {
     // find By Id and Update
     // return res - password
 });
+
 
 const getUserPosts = asyncHandler ( async(req, res) => {
     // get User

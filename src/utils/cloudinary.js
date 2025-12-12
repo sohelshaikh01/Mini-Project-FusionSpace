@@ -41,7 +41,7 @@ const removeFromCloudinary = async(cloudFileUrl) => {
     try {
         if(!cloudFileUrl) return null;
 
-        const response = await cloudinary.uploader.destory(cloudFileUrl);
+        const response = await cloudinary.uploader.destroy(cloudFileUrl);
 
         if(!response) {
             console.log("Failed to delete file in cloudinary");
@@ -49,6 +49,7 @@ const removeFromCloudinary = async(cloudFileUrl) => {
         }
 
         console.log("Successfully deleted file in cloudinary");
+        return response;
 
     } catch(error) {{
         console.log("Error while deleted file in cloudinary:", error);
