@@ -6,6 +6,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { Community } from "../models/community.models.js";
 import { uploadOnCloudinary, removeFromCloudinary } from "../utils/cloudinary.js";
 
+// --done
+
 // What is this for ...
 // const getPost = asyncHandler(async (req, res) => {
 //     const { postId } = req.params;
@@ -132,7 +134,6 @@ const getMyCommunity = asyncHandler(async (req, res) => {
     // get community details
     // !community return error
     // return errorconst 
-
 const getCommunity = asyncHandler(async (req, res) => {
     const { communityId } = req.params;
 
@@ -156,6 +157,69 @@ const getCommunity = asyncHandler(async (req, res) => {
         .json(
         new ApiResponse(200, community, "Community details fetched successfully")
         );
+});
+
+
+// new --
+const getCommunityPosts = asyncHandler(async (req, res) => {
+  const { communityId } = req.params;
+
+  // 1. Validation (Though middleware checks validity, it's good practice)
+  if (!communityId || !mongoose.Types.ObjectId.isValid(communityId)) {
+    // This should ideally be caught by isCommunityMember, but remains a safeguard
+    throw new ApiError(400, "Invalid Community ID");
+  }
+
+  // 2. Get pagination parameters
+  const page = parseInt(req.query.page) || 1; 
+  const limit = 10; // Standard limit for a feed
+  const skip = (page - 1) * limit;
+
+  // 3. Define the filter query
+  // Posts must belong to the specific communityId
+  const query = {
+    communityId: communityId, 
+    // Note: No 'isPublic: false' filter is needed here. 
+    // Since the user is a member, they can see all posts tied to this communityId.
+  };
+
+  // 4. Execute queries
+  
+  // A. Get the total count of matching documents for pagination metadata
+  const totalPosts = await Post.countDocuments(query);
+
+  // B. Get the paginated and sorted posts
+  const posts = await Post.find(query)
+    .sort({ createdAt: -1 }) // Sort by latest (descending)
+    .skip(skip)              // Apply pagination skip
+    .limit(limit)            // Apply pagination limit
+    // Populate the owner and community details
+    .populate("owner", "username avatar") 
+    .populate("communityId", "communityName avatar") 
+    .lean();
+
+  // 5. Calculate pagination metadata
+  const totalPages = Math.ceil(totalPosts / limit);
+  const hasNextPage = page < totalPages;
+
+  // 6. Construct the final response data
+  const responseData = {
+    posts,
+    pagination: {
+      totalPosts,
+      totalPages,
+      currentPage: page,
+      hasNextPage,
+      limit,
+    },
+  };
+
+  // 7. Success Response
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(200, responseData, "Community posts fetched successfully")
+    );
 });
 
 
@@ -229,6 +293,7 @@ const updateCommunity = asyncHandler(async (req, res) => {
         );
 });
 
+
 // Also delete related to join community
 // Delete = auth owner only
     // get c-id
@@ -278,10 +343,12 @@ const deleteCommunity = asyncHandler(async (req, res) => {
 });
 
 
+
 export {
     createCommunity,
     getMyCommunity,
     getCommunity,
+    getCommunityPosts,
     updateCommunity,
     deleteCommunity
 }

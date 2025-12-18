@@ -2,6 +2,7 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import mongoose from "mongoose";
+import { Community } from "../models/community.models.js";
 
 import {
     uploadOnCloudinary,
@@ -10,66 +11,129 @@ import {
 import { Post } from "../models/post.models.js";
 
 
-// Get = public + auth --
-const getPosts = asyncHandler( async(req, res) => {
+// Get = public + auth --new
+const getPosts = asyncHandler(async (req, res) => {
+    const userId = req.user._id; // Owner ID is the authenticated user
 
-    // auth - middleware
-    // req.user
-    // find user or not
-    // find all posts by user id - aggregate or paginate
-    // !post return error
-    // post return
+    // 1. Get pagination parameters
+    const page = parseInt(req.query.page) || 1; 
+    const limit = 10; // Standard default limit
+    const skip = (page - 1) * limit;
 
+    // 2. Define the filter query
+    // We want ALL posts where the owner field matches the authenticated user ID
+    const query = {
+        owner: userId, 
+    };
 
-});
+    // 3. Execute queries
+    
+    // A. Get the total count of matching documents for pagination metadata
+    const totalPosts = await Post.countDocuments(query);
 
-// Post = auth
-const publishAPost = asyncHandler( async(req, res) => {
-    // post content
-    // ispublic, communityId
+    // B. Get the paginated and sorted posts
+    const posts = await Post.find(query)
+        .sort({ createdAt: -1 }) // Sort by latest (descending)
+        .skip(skip)              // Apply pagination skip
+        .limit(limit)            // Apply pagination limit
+        // Populate the owner and community details for display
+        .populate("owner", "username avatar") 
+        .populate("communityId", "communityName avatar") 
+        .lean();
 
-    const { text } = req.body;
+    // 4. Calculate pagination metadata
+    const totalPages = Math.ceil(totalPosts / limit);
+    const hasNextPage = page < totalPages;
 
-    if(!text || text.trim() == "") {
-        throw new ApiError(400, "All fields are required")
-    }
+    // 5. Construct the final response data
+    const responseData = {
+        posts,
+        pagination: {
+        totalPosts,
+        totalPages,
+        currentPage: page,
+        hasNextPage,
+        limit,
+        },
+    };
 
-    const imageFilePath = req.files?.imageFile?.[0]?.path || null;
-
-    let image;
-
-    if(!imageFilePath) {
-        image = null;
-    }
-    else {
-        image = await uploadOnCloudinary(imageFilePath);
-
-        if(!image) {
-            throw new ApiError(400, 'Image is required');
-        }
-    }
-
-    const userId = req.user._id;
-
-    const postCreated = await Post.create({
-        text, 
-        image: image?.url || null,
-        owner: userId,
-        ispublic: null,
-        communityId: null
-    });
-
-    if(!postCreated) {
-        throw new ApiError(400, "Post not published");
-    }
-
+    // 6. Success Response
     return res
-        .status(201)
+        .status(200)
         .json(
-            new ApiResponse(201, postCreated, "Post published successfully")
+        new ApiResponse(200, responseData, "User timeline posts fetched successfully")
         );
-
 });
+
+
+// --change communityId
+// Post = auth
+const publishAPost = asyncHandler(async (req, res) => {
+  const { text, communityId } = req.body; // Destructure communityId from body
+  const userId = req.user._id;
+
+  // 1. Basic Validation
+  if (!text || text.trim() === "") {
+    throw new ApiError(400, "Post content (text) is required");
+  }
+
+  // 2. Determine Post Type and Access Control
+  let isPublicStatus = true;
+  let targetCommunityId = null;
+
+  if (communityId && mongoose.Types.ObjectId.isValid(communityId)) {
+    // A. Community Post Logic
+    targetCommunityId = communityId;
+    isPublicStatus = false; // Post is private to the community
+
+    // 2a. Check if the community exists and the user is a member
+    const community = await Community.findById(targetCommunityId).select("members");
+
+    if (!community) {
+      throw new ApiError(404, "Target community not found");
+    }
+
+    if (!community.members.includes(userId)) {
+      throw new ApiError(403, "You must be a member of this community to post here");
+    }
+  } 
+  // Else: communityId is null/invalid, so targetCommunityId remains null and isPublicStatus remains true.
+
+  // 3. Handle Image Upload
+  const imageFilePath = req.files?.imageFile?.[0]?.path || null;
+  let imageUrl = null;
+
+  if (imageFilePath) {
+    const image = await uploadOnCloudinary(imageFilePath);
+
+    if (!image) {
+      // Note: If Cloudinary fails, you might want to consider deleting the local file here.
+      throw new ApiError(500, 'Image upload failed. Post not created.');
+    }
+    imageUrl = image.url;
+  }
+
+  // 4. Create the Post
+  const postCreated = await Post.create({
+    text,
+    image: imageUrl,
+    owner: userId,
+    isPublic: isPublicStatus,      // Dynamic: true (public) or false (community)
+    communityId: targetCommunityId // Dynamic: ObjectId or null
+  });
+
+  if (!postCreated) {
+    throw new ApiError(500, "Post not published due to database error");
+  }
+
+  // 5. Success Response
+  return res
+    .status(201)
+    .json(
+      new ApiResponse(201, postCreated, "Post published successfully")
+    );
+});
+
 
 // Get = publish + auth
 const getPostById = asyncHandler( async(req, res) => {
@@ -223,7 +287,6 @@ const togglePublishStatus = asyncHandler( async(req, res) => {
         .json(
             new ApiResponse(200, isPost, 'This Post publish status has been toggle')
         )
-
 });
 
 // Get = if post is public

@@ -7,6 +7,7 @@ import { Like } from "../models/like.models.js";
 import { Post } from "../models/post.models.js";
 import { Comment } from "../models/comment.models.js";
 
+// --done
 // Post = auth --done
 // get postId, userId
 // validate postId

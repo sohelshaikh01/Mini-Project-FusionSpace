@@ -7,7 +7,9 @@ import { Follow }from "../models/follows.models.js";
 import { User } from "../models/user.models.js";
 
 
-// Post = auth
+// -- all done
+
+// Post = auth --done
 // extract channelId and userId
 // -- $or to check subscription exists or not
 // validate channelId
@@ -79,7 +81,7 @@ const followUser = asyncHandler(async (req, res) => {
         );
 });
 
-// Delete = auth
+// Delete = auth --done
 // extract channelId and userId
 // -- $or to check subscription exists or not
 // validate channelId
