@@ -20,12 +20,10 @@ const isCommunityMember = asyncHandler(async (req, res, next) => {
     throw new ApiError(404, "Community not found");
   }
 
-  // Check if the userId is present in the members array
   if (!community.members.includes(userId)) {
     throw new ApiError(403, "Access denied: You must be a member to view this content");
   }
 
-  // Success: Proceed to the controller
   next();
 });
 

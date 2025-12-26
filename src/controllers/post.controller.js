@@ -2,41 +2,39 @@ import { asyncHandler } from "../utils/asyncHandler.js"
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import mongoose from "mongoose";
-import { Community } from "../models/community.models.js";
 
 import {
     uploadOnCloudinary,
     removeFromCloudinary
 } from "../utils/cloudinary.js";
+import { Community } from "../models/community.models.js";
 import { Post } from "../models/post.models.js";
+import { Like } from "../models/like.models.js";
 
 
-// Get = public + auth --new
+// /get public + auth --
 const getPosts = asyncHandler(async (req, res) => {
-    const userId = req.user._id; // Owner ID is the authenticated user
+    const userId = req.user._id;
 
     // 1. Get pagination parameters
     const page = parseInt(req.query.page) || 1; 
-    const limit = 10; // Standard default limit
+    const limit = 10;
     const skip = (page - 1) * limit;
 
     // 2. Define the filter query
-    // We want ALL posts where the owner field matches the authenticated user ID
     const query = {
         owner: userId, 
     };
 
     // 3. Execute queries
     
-    // A. Get the total count of matching documents for pagination metadata
     const totalPosts = await Post.countDocuments(query);
 
     // B. Get the paginated and sorted posts
     const posts = await Post.find(query)
-        .sort({ createdAt: -1 }) // Sort by latest (descending)
-        .skip(skip)              // Apply pagination skip
-        .limit(limit)            // Apply pagination limit
-        // Populate the owner and community details for display
+        .sort({ createdAt: -1 })
+        .skip(skip)         
+        .limit(limit)  
         .populate("owner", "username avatar") 
         .populate("communityId", "communityName avatar") 
         .lean();
@@ -57,7 +55,6 @@ const getPosts = asyncHandler(async (req, res) => {
         },
     };
 
-    // 6. Success Response
     return res
         .status(200)
         .json(
@@ -65,11 +62,9 @@ const getPosts = asyncHandler(async (req, res) => {
         );
 });
 
-
-// --change communityId
-// Post = auth
+// /post - auth: Change CommunityId
 const publishAPost = asyncHandler(async (req, res) => {
-  const { text, communityId } = req.body; // Destructure communityId from body
+  const { text, communityId } = req.body;
   const userId = req.user._id;
 
   // 1. Basic Validation
@@ -97,7 +92,6 @@ const publishAPost = asyncHandler(async (req, res) => {
       throw new ApiError(403, "You must be a member of this community to post here");
     }
   } 
-  // Else: communityId is null/invalid, so targetCommunityId remains null and isPublicStatus remains true.
 
   // 3. Handle Image Upload
   const imageFilePath = req.files?.imageFile?.[0]?.path || null;
@@ -107,7 +101,6 @@ const publishAPost = asyncHandler(async (req, res) => {
     const image = await uploadOnCloudinary(imageFilePath);
 
     if (!image) {
-      // Note: If Cloudinary fails, you might want to consider deleting the local file here.
       throw new ApiError(500, 'Image upload failed. Post not created.');
     }
     imageUrl = image.url;
@@ -118,8 +111,8 @@ const publishAPost = asyncHandler(async (req, res) => {
     text,
     image: imageUrl,
     owner: userId,
-    isPublic: isPublicStatus,      // Dynamic: true (public) or false (community)
-    communityId: targetCommunityId // Dynamic: ObjectId or null
+    isPublic: isPublicStatus,
+    communityId: targetCommunityId
   });
 
   if (!postCreated) {
@@ -134,38 +127,49 @@ const publishAPost = asyncHandler(async (req, res) => {
     );
 });
 
-
-// Get = publish + auth
-const getPostById = asyncHandler( async(req, res) => {
-
-    // Resolve whom to return the post
+// /get public + auth --
+const getPostById = asyncHandler(async (req, res) => {
     const { postId } = req.params;
 
-    if(!postId) {
-        throw new ApiError(404, "PostId is required");
+    const postData = await Post.findById(postId)
+        .populate("owner", "username avatar")
+        .populate("communityId", "communityName avatar description")
+        .lean();
+
+    if (!postData) throw new ApiError(404, "Post Not Found");
+
+    // -- Handle Guest vs Logged In User --
+    const userId = req.user?._id; 
+    let isLiked = false;
+
+    // Only check DB if there is a logged-in user
+    if (userId) {
+        const existingLike = await Like.findOne({
+            post: postId,
+            likedBy: userId
+        });
+        isLiked = !!existingLike;
     }
 
-    if(!mongoose.Types.ObjectId.isValid(postId)) {
-        throw new ApiError(400, "Invalid post ID format")
-    }
+    const { communityId, ...restOfPost } = postData;
 
-    const post = await Post.findById(postId).lean();
+    const formattedPost = {
+        ...restOfPost,
+        isLiked, 
+        communityDetails: communityId,
+        owner: {
+            owner: postData.owner?.username,
+            _id: postData.owner?._id,
+            avatar: postData.owner?.avatar
+        }
+    };
 
-    if(!post) {
-        throw new ApiError(404, "Post Not Found");
-    }
-
-    return res
-        .status(200)
-        .json(
-            new ApiResponse(200, post, "Post Details Fetched Successfully")
-        );
-
+    return res.status(200).json(new ApiResponse(200, formattedPost));
 });
 
-// Patch = auth --
+// /path auth --
+// remain isPublic update or togglePublishStatus()
 const updateAPost = asyncHandler( async(req, res) => {
-    // remain to update isPublic status
 
     const { postId} = req.params;
     const { text } = req.body;
@@ -196,7 +200,6 @@ const updateAPost = asyncHandler( async(req, res) => {
 
     isPost.text = text;
 
-    // Not working if not image or field mentioned
     const imageFilePath = req.files?.imageFile[0]?.path || null;
 
     if(imageFilePath) {
@@ -220,11 +223,11 @@ const updateAPost = asyncHandler( async(req, res) => {
             new ApiResponse(200, isPost, "Post updated successfully")
         );
 
-});
+}); 
 
-// Delete = auth
+// /delete - auth --
+// delete post related in other tables
 const deleteAPost = asyncHandler( async(req, res) => {
-    // delete comments and likes from that table.
 
     const { postId } = req.params;
     const userId = req.user._id;
@@ -247,8 +250,6 @@ const deleteAPost = asyncHandler( async(req, res) => {
         await removeFromCloudinary(post.image);
     }
 
-    // write comments and like delete here
-
     await Post.deleteOne({ _id: postId });
 
     return res
@@ -258,10 +259,9 @@ const deleteAPost = asyncHandler( async(req, res) => {
         );
 });
 
-// remain as above not contain publish field.
-// Patch = auth
+// /patch - auth
+// can use $or
 const togglePublishStatus = asyncHandler( async(req, res) => {
-    // use $or operator
 
     const { postId } = req.params;
 
@@ -289,7 +289,7 @@ const togglePublishStatus = asyncHandler( async(req, res) => {
         )
 });
 
-// Get = if post is public
+// /get - public posts only
 const searchPost = asyncHandler ( async(req, res) => {
     // make route proper - add params
 

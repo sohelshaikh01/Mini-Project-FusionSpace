@@ -25,20 +25,21 @@ router.route("/register").post(
     registerUser);
 // public
 router.route("/login").post(loginUser);
+
 // auth
 router.route("/logout").post(verifyJWT, logoutUser);
 
 // auth
 router.route("/me").get(verifyJWT, getCurrentUserProfile);
+
 // auth update profile
 router.route("/me").patch(verifyJWT, updateMyProfile);
 
 // public
 router.route("/:userId").get(getUserProfile);
+
 // public - public posts only
-router.route("/:userId/post").get(getUserPosts);
-
-
+router.route("/:userId/posts").get(getUserPosts);
 
 
 export default router;

@@ -9,9 +9,9 @@ const router = Router();
 
 // auth all
 router.route("/toggle/p/:postId")
-    .post(verifyJWT, togglePostLike)
-router.route("/toggle/c/:commentId")
-    .post(verifyJWT, toggleCommentLike)
+    .post(verifyJWT, togglePostLike);
 
+router.route("/toggle/c/:commentId")
+    .post(verifyJWT, toggleCommentLike);
 
 export default router;

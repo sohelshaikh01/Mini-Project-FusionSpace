@@ -6,7 +6,7 @@ const communitySchema = new Schema(
       type: String,
       required: true,
       lowercase: true,
-      unique: true
+      unique: true,
     },
     avatar: {
       type: String,
@@ -14,16 +14,16 @@ const communitySchema = new Schema(
     ownerId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
     members: [
       {
         type: mongoose.Schema.Types.ObjectId,
-        ref: "User"
-      }
-    ]
+        ref: "User",
+      },
+    ],
   },
-  { timestamps: true}
+  { timestamps: true }
 );
 
 export const Community = mongoose.model("Community", communitySchema);

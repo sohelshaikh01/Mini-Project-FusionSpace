@@ -9,9 +9,9 @@ import { verifyJWT } from "../middlewares/auth.middleware.js";
 
 const router = Router();
 
-// This must have aggregation
+ // sort used in front
 // auth following + communities posts
-router.route("/feed").get(verifyJWT, feed); // sort used in front
+router.route("/feed").get(verifyJWT, feed);
 
 // public + post / comm
 router.route("/explore").get(verifyJWT, exploreFeed);

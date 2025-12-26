@@ -14,7 +14,7 @@ router
     .post(verifyJWT, followUser)
     .delete(verifyJWT, unfollowUser); // auth
     
-    // public
+// public
 router.route("/:userId/followers").get(getFollowers);
 router.route("/:userId/following").get(getFollowing);
 

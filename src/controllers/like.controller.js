@@ -7,14 +7,7 @@ import { Like } from "../models/like.models.js";
 import { Post } from "../models/post.models.js";
 import { Comment } from "../models/comment.models.js";
 
-// --done
-// Post = auth --done
-// get postId, userId
-// validate postId
-// find existing post like
-// !existing like create
-// exists then delete
-// return res accordingly
+// /post auth --
 const togglePostLike = asyncHandler(async (req, res) => {
   const { postId } = req.params;
   const likeBy = req.user._id;
@@ -53,7 +46,6 @@ const togglePostLike = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Post not found');
   }
 
-  // Update like count based on the action
   if (action === 'liked') {
     isPost.likeCount = isPost.likeCount + 1;
   } else {
@@ -70,13 +62,7 @@ const togglePostLike = asyncHandler(async (req, res) => {
         );
 });
 
-// Post = auth --done
-// get commentId, userId
-// validate comId
-// find exixting com like
-// !existing like create
-// exists then delete
-// return response accordingly
+// /post auth --
 const toggleCommentLike = asyncHandler(async (req, res) => {
   const { commentId } = req.params;
   const likeBy = req.user._id;
@@ -115,7 +101,6 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
     throw new ApiError(404, 'Comment not found');
   }
 
-  // Update like count based on the action
   if (action === 'liked') {
     isComment.likeCount = isComment.likeCount + 1;
   } else {

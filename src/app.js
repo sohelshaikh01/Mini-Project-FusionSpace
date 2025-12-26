@@ -5,10 +5,9 @@ import cookieParser from "cookie-parser";
 const app = express();
 
 const corsOptions = {
-    // 1. Specify the EXACT origin of your frontend
     origin: "http://localhost:5173", 
     
-    // 2. Allow credentials (cookies)
+    // Allow credentials (cookies)
     credentials: true, 
     
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
@@ -16,7 +15,6 @@ const corsOptions = {
 };
 
 app.use(cors(corsOptions));
-
 
 app.use(express.json({limit: "16kb"}));
 

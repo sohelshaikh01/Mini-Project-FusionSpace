@@ -13,7 +13,6 @@ import isCommunityMember from "../middlewares/isCommunityMember.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
 
-
 const router = Router();
 
 // auth
@@ -30,7 +29,8 @@ router.route("/")
 // auth + Join before details
 router.route("/:communityId").get(verifyJWT, getCommunity);
 
-router.route("/:communityId").get(verifyJWT, isCommunityMember, getCommunityPosts);
+// auth + Member
+router.route("/:communityId/posts").get(verifyJWT, isCommunityMember, getCommunityPosts);
 
 // auth owner only
 router.route("/:communityId").patch(verifyJWT,

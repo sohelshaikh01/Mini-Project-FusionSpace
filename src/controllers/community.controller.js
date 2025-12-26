@@ -4,43 +4,12 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { ApiError } from "../utils/ApiError.js";
 
 import { Community } from "../models/community.models.js";
+import { Post } from "../models/post.models.js";
 import { uploadOnCloudinary, removeFromCloudinary } from "../utils/cloudinary.js";
 
-// --done
 
-// What is this for ...
-// const getPost = asyncHandler(async (req, res) => {
-//     const { postId } = req.params;
-
-//     const post = await Post.findById(postId);
-//     if (!post) throw new ApiError(404, "Post not found");
-
-//     // Public post → allow directly
-//     if (post.isPublic) {
-//         return res.status(200).json(new ApiResponse(200, post));
-//     }
-
-//     // Private post → must check community
-//     const community = await Community.findById(post.communityId);
-
-//     if (!community.members.includes(req.user._id)) {
-//         throw new ApiError(403, "Not allowed to view this post");
-//     }
-
-//     return res.status(200).json(new ApiResponse(200, post));
-// });
-
-
-// Post = auth
-    // community name, avatar, ownerId(userId), members = 0
-    // validate data
-    // upload image if available
-    // save data
-    // create in mongodb
-    // !created return error
-    // return created
-
-    // also add owner in community as member
+// /post - auth --
+// delete profile photo if unable to create community
 const createCommunity = asyncHandler(async (req, res) => {
   const { communityName } = req.body;
   const ownerId = req.user._id;
@@ -52,7 +21,6 @@ const createCommunity = asyncHandler(async (req, res) => {
 
   // 2. Uniqueness Check: Find if a community with this name already exists
   const existingCommunity = await Community.findOne({
-    // Use case-insensitive search if needed, but simple exact match is faster
     communityName: communityName
   });
 
@@ -61,7 +29,6 @@ const createCommunity = asyncHandler(async (req, res) => {
   }
 
   // 3. Handle Avatar File Upload
-  // NOTE: The request provided 'avatarFile' in the snippet, so using that here.
   const avatarLocalPath = req.files?.avatarFile?.[0]?.path || null;
 
   if (!avatarLocalPath) {
@@ -71,7 +38,6 @@ const createCommunity = asyncHandler(async (req, res) => {
   const avatar = await uploadOnCloudinary(avatarLocalPath);
 
   if (!avatar) {
-    // Note: A real app should delete the local file here if upload fails
     throw new ApiError(400, "Avatar upload failed. Please try again.");
   }
 
@@ -80,16 +46,13 @@ const createCommunity = asyncHandler(async (req, res) => {
     communityName,
     avatar: avatar.url,
     ownerId,
-    // Initialize members array with the owner
     members: [ownerId],
   });
 
   if (!community) {
-    // Note: If creation fails, consider deleting the uploaded avatar from Cloudinary
     throw new ApiError(500, "Failed to create community");
   }
 
-  // 5. Success Response
   return res
     .status(201)
     .json(
@@ -97,18 +60,13 @@ const createCommunity = asyncHandler(async (req, res) => {
     );
 });
 
-// Get = auth
-    // get userid
-    // check userid = communities
-    // !communities return error
-    // return communities
+// /get - auth --
 const getMyCommunity = asyncHandler(async (req, res) => {
     const userId = req.user._id;
 
-    // Find all communities where the user ID is in the 'members' array
     const myCommunities = await Community.find({
         members: userId
-    }).select("-ownerId"); // Exclude ownerId for brevity in the list view
+    }).select("-ownerId");
 
     if (!myCommunities || myCommunities.length === 0) {
         return res
@@ -118,7 +76,6 @@ const getMyCommunity = asyncHandler(async (req, res) => {
         );
     }
 
-    // Success Response
     return res
         .status(200)
         .json(
@@ -126,23 +83,15 @@ const getMyCommunity = asyncHandler(async (req, res) => {
         );
 });
     
-
-// ---------------- If user if member then only show posts
-// Get = auth Before joining details
-    // get community id
-    // validate id
-    // get community details
-    // !community return error
-    // return errorconst 
+// /get - auth --
+// for review
 const getCommunity = asyncHandler(async (req, res) => {
     const { communityId } = req.params;
 
-    // 1. Validation
     if (!mongoose.Types.ObjectId.isValid(communityId)) {
         throw new ApiError(400, "Invalid Community ID");
     }
 
-    // 2. Fetch Community details, populating owner and members
     const community = await Community.findById(communityId)
         .populate("ownerId", "username fullname avatar")
         .populate("members", "username fullname avatar");
@@ -151,88 +100,77 @@ const getCommunity = asyncHandler(async (req, res) => {
         throw new ApiError(404, "Community not found");
     }
 
-    // Success Response
+    const userId = req.user?._id;
+    
+    const isMember = community.ownerId?._id.toString() === userId?.toString() || 
+                     community.members.some(member => member._id.toString() === userId?.toString());
+
+    const membersCount = community.members.length;
+
+    const communityData = {
+        ...community.toObject(),
+        isMember,
+        membersCount
+    };
+
     return res
         .status(200)
         .json(
-        new ApiResponse(200, community, "Community details fetched successfully")
+            new ApiResponse(200, communityData, "Community details fetched successfully")
         );
 });
 
-
-// new --
+// for review --
 const getCommunityPosts = asyncHandler(async (req, res) => {
   const { communityId } = req.params;
 
-  // 1. Validation (Though middleware checks validity, it's good practice)
-  if (!communityId || !mongoose.Types.ObjectId.isValid(communityId)) {
-    // This should ideally be caught by isCommunityMember, but remains a safeguard
+  if (!mongoose.Types.ObjectId.isValid(communityId)) {
     throw new ApiError(400, "Invalid Community ID");
   }
 
-  // 2. Get pagination parameters
   const page = parseInt(req.query.page) || 1; 
-  const limit = 10; // Standard limit for a feed
+  const limit = 10;
   const skip = (page - 1) * limit;
 
-  // 3. Define the filter query
-  // Posts must belong to the specific communityId
-  const query = {
-    communityId: communityId, 
-    // Note: No 'isPublic: false' filter is needed here. 
-    // Since the user is a member, they can see all posts tied to this communityId.
-  };
+  const query = { communityId };
 
-  // 4. Execute queries
-  
-  // A. Get the total count of matching documents for pagination metadata
   const totalPosts = await Post.countDocuments(query);
 
-  // B. Get the paginated and sorted posts
   const posts = await Post.find(query)
-    .sort({ createdAt: -1 }) // Sort by latest (descending)
-    .skip(skip)              // Apply pagination skip
-    .limit(limit)            // Apply pagination limit
-    // Populate the owner and community details
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
     .populate("owner", "username avatar") 
     .populate("communityId", "communityName avatar") 
     .lean();
 
-  // 5. Calculate pagination metadata
+  // Format posts to match the owner: { owner, _id, avatar } structure
+  const formattedPosts = posts.map(post => ({
+    ...post,
+    owner: {
+      owner: post.owner?.username,
+      _id: post.owner?._id,
+      avatar: post.owner?.avatar
+    }
+  }));
+
   const totalPages = Math.ceil(totalPosts / limit);
-  const hasNextPage = page < totalPages;
 
-  // 6. Construct the final response data
-  const responseData = {
-    posts,
-    pagination: {
-      totalPosts,
-      totalPages,
-      currentPage: page,
-      hasNextPage,
-      limit,
-    },
-  };
-
-  // 7. Success Response
   return res
     .status(200)
-    .json(
-      new ApiResponse(200, responseData, "Community posts fetched successfully")
-    );
+    .json(new ApiResponse(200, {
+      posts: formattedPosts,
+      pagination: {
+        totalPosts,
+        totalPages,
+        currentPage: page,
+        hasNextPage: page < totalPages,
+      },
+    }, "Community posts fetched successfully"));
 });
 
-
-// Patch = auth owner only
-    // get c-id, content
-    // validate id
-    // get user
-    // userid = ownerid
-    // !match return error
-    // update details
-    // delete image of community
-    // !update return error
-    // return error
+// /path - auth owner --
+// not used in fronted
 const updateCommunity = asyncHandler(async (req, res) => {
     const { communityId } = req.params;
     const { communityName } = req.body;
@@ -293,18 +231,10 @@ const updateCommunity = asyncHandler(async (req, res) => {
         );
 });
 
-
-// Also delete related to join community
-// Delete = auth owner only
-    // get c-id
-    // get user, validate c-id
-    // userid = ownerid
-    // !match return error
-    // delete image of comm
-    // delete comm
-    // !delete return error
-    // return deleted
+// /delete - auth owner --
+// delete related join community
 const deleteCommunity = asyncHandler(async (req, res) => {
+
     const { communityId } = req.params;
 
     // 1. Validation
@@ -316,7 +246,6 @@ const deleteCommunity = asyncHandler(async (req, res) => {
     const communityToDelete = await Community.findById(communityId);
 
     if (!communityToDelete) {
-        // This case shouldn't be reached if isCommunityOwner middleware runs first, but safe check
         throw new ApiError(404, "Community not found");
     }
 
@@ -327,22 +256,16 @@ const deleteCommunity = asyncHandler(async (req, res) => {
         throw new ApiError(500, "Failed to delete community");
     }
 
-    // 4. Delete the associated avatar from Cloudinary
     if (communityToDelete.avatar) {
         await removeFromCloudinary(communityToDelete.avatar);
     }
 
-    // Note: A complete deletion should also handle associated posts, comments, etc.
-
-    // 5. Success Response
     return res
         .status(200)
         .json(
         new ApiResponse(200, null, "Community deleted successfully")
         );
 });
-
-
 
 export {
     createCommunity,

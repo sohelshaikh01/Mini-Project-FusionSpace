@@ -5,16 +5,7 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 
 import { Community } from "../models/community.models.js";
 
-// Post = auth
-    // get c-id
-    // get userId
-    // validate
-    // check community
-    // then add user to members
-    // !done return error
-    // return done
-// Assume imports as before
-
+// /post - auth --
 const joinCommunity = asyncHandler(async (req, res) => {
     const { communityId } = req.params;
     const userId = req.user._id;
@@ -41,14 +32,12 @@ const joinCommunity = asyncHandler(async (req, res) => {
         throw new ApiError(400, "You are already a member of this community");
     }
 
-    // 3. Add user to the members array atomically
     const updatedCommunity = await Community.findByIdAndUpdate(
         communityId,
         { $addToSet: { members: userId } }, // $addToSet ensures no duplicates
         { new: true }
     ).select("communityName members");
 
-    // 4. Success Response
     return res
         .status(200)
         .json(
@@ -57,17 +46,7 @@ const joinCommunity = asyncHandler(async (req, res) => {
 });
 
 
-// Delete = auth
-    // get c-id
-    // get userId
-    // validate
-    // check if user present
-    // !present return error
-    // delete user
-    // !left return error
-    // return left
-// Assume imports as before
-
+// /delete - auth --
 const leaveCommunity = asyncHandler(async (req, res) => {
     const { communityId } = req.params;
     const userId = req.user._id;
@@ -101,7 +80,6 @@ const leaveCommunity = asyncHandler(async (req, res) => {
         { new: true }
     ).select("communityName members");
 
-    // 4. Success Response
     return res
         .status(200)
         .json(
@@ -110,22 +88,10 @@ const leaveCommunity = asyncHandler(async (req, res) => {
 });
 
 
-// Get = auth only for users
-    // get c-id
-    // validate c-id
-    // get userId
-    // userId in members list
-    // !list return none
-    // get members list
-    // !members return error
-    // return members
-// Assume imports as before
-
+// /get - auth members --
 const getCommunityMembers = asyncHandler(async (req, res) => {
     const { communityId } = req.params;
 
-    // We rely on 'isCommunityMember' middleware for existence/access check.
-    
     // 1. Fetch community document and populate the members field
     const community = await Community.findById(communityId)
         .select("members")
@@ -133,14 +99,12 @@ const getCommunityMembers = asyncHandler(async (req, res) => {
         .lean();
 
     if (!community) {
-        // Safety check, though middleware should catch this
         throw new ApiError(404, "Community not found");
     }
 
     // 2. Extract the clean array of member user objects
     const memberList = community.members;
 
-    // 3. Success Response
     return res
         .status(200)
         .json(

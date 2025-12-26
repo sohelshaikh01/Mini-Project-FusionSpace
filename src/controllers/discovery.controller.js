@@ -7,15 +7,8 @@ import { Post } from "../models/post.models.js";
 import { Follow } from "../models/follows.models.js";
 import { Community } from '../models/community.models.js';
 
-// --done just check out in frontend
 
-// Get = auth following + communities posts
-  // Create post on feed page as home page
- 
-  // make at home page
-  // Following posts
-  // Communities posts
-  // send in seprate
+// auth - following and public posts --
 const feed = asyncHandler( async(req, res) => {
 
   // 1. Get the current user's ID (must be a Mongoose ObjectId)
@@ -25,30 +18,20 @@ const feed = asyncHandler( async(req, res) => {
   const limit = parseInt(req.query.limit) || 10;
   const offset = parseInt(req.query.offset) || 0;
     // 3. Find all users the current user is following
-    // We only need the 'followerId' field (the users being followed).
-    const followedUsers = await Follow.find(
-      { followingId: currentUserId }, 
-      { followerId: 1, _id: 0 } // Project only the followerId
-    ).lean(); 
-    
-    // Extract the array of followed user ObjectIds
-    const followedUserIds = followedUsers.map(f => f.followerId);
+    const followedUsers = await Follow.find({ followerId: currentUserId });
 
-    // 4. Fetch the public posts from those followed users
+    const followedUserIds = followedUsers.map(f => f.followingId);
+
     const feedPosts = await Post.find({
-      // Match posts where the ownerId is in the array of followedUserIds
-      ownerId: { $in: followedUserIds },
-      // And the post is public
+      owner: { $in: followedUserIds },
       isPublic: true,
     })
-    .sort({ created_at: -1 }) // Sort by creation date descending
+    .sort({ created_at: -1 })
     .skip(offset)
     .limit(limit)
-    // Optional: Populate the owner data to display username/avatar
-    .populate('ownerId', 'username avatar') 
+    .populate('owner', 'username avatar') 
     .exec();
-    
-    // 5. Send the successful response
+
     return res.status(200).json(feedPosts);
 
 });
@@ -61,7 +44,7 @@ const feed = asyncHandler( async(req, res) => {
 //   const offset = parseInt(req.query.offset) || 0;
 
 //   try {
-//     const feedPosts = await Following.aggregate([
+//     const feedPosts = await Follow.aggregate([
 //       // 1. Match: Find all 'Following' records for the current user
 //       {
 //         $match: {
@@ -105,10 +88,10 @@ const feed = asyncHandler( async(req, res) => {
 //   }
 // }
 
-// Get = public + post / comm
-    // Trending heading
-    // public post of people not followed
-    
+// /get - public + post / communities
+// Trending heading
+// public post of people not followed
+// Not of owner, community, followings
 const exploreFeed = asyncHandler(async (req, res) => {
 
     const userId = req.user._id;
@@ -119,46 +102,40 @@ const exploreFeed = asyncHandler(async (req, res) => {
     const skip = (page - 1) * limit;
 
     // 2. Find all users the current user is FOLLOWING
-    // We need the array of IDs of the people the user is following.
     const followingRecords = await Follow.find({
       followerId: userId,
     }).select('followingId');
 
-    // Create an array of IDs of users to EXCLUDE from the post feed
     const followingIds = followingRecords.map(record => record.followingId);
 
     // 3. Define the Main Query
     const mainPostQuery = {
-      isPublic: true,              // Must be a public post
-      owner: { $nin: followingIds }, // Owner must NOT be in the following list
-      communityId: null,           // Optionally exclude community posts from the general feed
+      isPublic: true,        
+      owner: { $nin: followingIds },
+      communityId: null,        
     };
 
     // 4. --- Fetch Main Posts (Paginated) ---
-
     const totalExplorePosts = await Post.countDocuments(mainPostQuery);
 
     const explorePosts = await Post.find(mainPostQuery)
-      .sort({ createdAt: -1 }) // Sort by latest (you could also sort by 'likeCount' here)
+      .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .populate("owner", "username avatar")
       .select("text image owner likeCount _id")
       .lean();
 
-    // 5. --- Fetch Trending Headlines (Simulated) ---
-    // To simulate trending, we look for the top 5 most-liked public posts 
-    // from users the current user does not follow.
+    // 5. --- Fetch Trending Headlines (Simulated)
     const trendingHeadlines = await Post.find(mainPostQuery)
-      .sort({ likeCount: -1, createdAt: -1 }) // Sort primarily by like count
-      .limit(5) // Get top 5 trending
+      .sort({ likeCount: -1, createdAt: -1 })
+      .limit(5)
       .select("text likeCount _id")
       .lean();
 
-    // Format headlines for display
     const formattedHeadlines = trendingHeadlines.map(post => ({
       postId: post._id,
-      headline: post.text.substring(0, 50) + '...', // Use the start of the text as the headline
+      headline: post.text.substring(0, 50) + '...',
       likeCount: post.likeCount,
     }));
 
@@ -166,7 +143,6 @@ const exploreFeed = asyncHandler(async (req, res) => {
     const totalPages = Math.ceil(totalExplorePosts / limit);
     const hasNextPage = page < totalPages;
 
-    // 7. Construct the final combined response
     const responseData = {
       trendingHeadlines: formattedHeadlines,
       exploreFeed: explorePosts,
@@ -179,7 +155,6 @@ const exploreFeed = asyncHandler(async (req, res) => {
       },
     };
 
-    // 8. Success Response
     return res
       .status(200)
       .json(
@@ -188,47 +163,37 @@ const exploreFeed = asyncHandler(async (req, res) => {
 });
 
 
-// Get = public most liked
-// most liked from
-// public
-// communities
+// /get - most liked public, most members --
 const trending = asyncHandler(async (req, res) => {
-    // Define limits for both sections
+   
     const postLimit = 10;
     const communityLimit = 5;
 
     // 1. --- Fetch Trending Posts (Most Liked Public Posts) ---
-    
-    // Query for posts that are explicitly public
     const trendingPosts = await Post.find({ isPublic: true })
-        .sort({ likeCount: -1, createdAt: -1 }) // Sort by likeCount descending, then latest
+        .sort({ likeCount: -1, createdAt: -1 })
         .limit(postLimit)
-        .populate("owner", "username avatar") // Show who owns the post
+        .populate("owner", "username avatar")
         .select("text image owner likeCount _id")
         .lean();
 
     // 2. --- Fetch Trending Communities (Highest Member Count) ---
-    
-    // Note: The Mongoose query needs to sort by the size of the 'members' array.
-    // We use the aggregation framework for sorting by array size, which is efficient.
-    
     const trendingCommunities = await Community.aggregate([
         {
         $project: {
             communityName: 1,
             avatar: 1,
-            membersCount: { $size: "$members" }, // Calculate the size of the members array
+            membersCount: { $size: "$members" },
             ownerId: 1,
             _id: 1,
         },
         },
         {
-        $sort: { membersCount: -1 } // Sort by the calculated count descending
+        $sort: { membersCount: -1 }
         },
         {
         $limit: communityLimit
         },
-        // Optional: Populate the owner details if needed (requires another $lookup stage)
     ]);
 
     // 3. Construct the final combined response
@@ -237,7 +202,6 @@ const trending = asyncHandler(async (req, res) => {
         trendingCommunities: trendingCommunities,
     };
 
-    // 4. Success Response
     return res
         .status(200)
         .json(

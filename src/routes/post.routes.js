@@ -6,7 +6,8 @@ import {
     updateAPost,
     deleteAPost,
     togglePublishStatus,
-    searchPost
+    searchPost,
+    // getUserPublicPosts
 } from "../controllers/post.controller.js";
 import { verifyJWT } from "../middlewares/auth.middleware.js";
 import { upload } from "../middlewares/multer.middleware.js";
@@ -14,7 +15,7 @@ import { upload } from "../middlewares/multer.middleware.js";
 const router = Router();
 
 // public + auth (members or post must be public)
-router.route("/").get(getPosts);
+router.route("/").get(verifyJWT, getPosts);
 
 // auth
 router.route("/").post(verifyJWT, 
@@ -42,6 +43,9 @@ router.route("/:postId").delete(verifyJWT, deleteAPost);
 
 // auth
 router.route("/publish/:postId").patch(verifyJWT, togglePublishStatus);
+
+// Used in user routes.
+// router.route("/:userId/posts").get(getUserPublicPosts);
 
 // public - public things only
 router.route("/search").get(searchPost);
