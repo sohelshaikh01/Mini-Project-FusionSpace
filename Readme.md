@@ -6,7 +6,7 @@ This is backend of the **Social Media Application**
 
 ## Installation Steps
 
-Clone Repo
+Clone Repo on your machine
 ```
 git clone repo-url
 ```

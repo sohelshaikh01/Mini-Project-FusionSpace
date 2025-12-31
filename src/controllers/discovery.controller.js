@@ -5,6 +5,7 @@ import { asyncHandler } from "../utils/asyncHandler.js";
 
 import { Post } from "../models/post.models.js";
 import { Follow } from "../models/follows.models.js";
+import { User } from '../models/user.models.js';
 import { Community } from '../models/community.models.js';
 
 
@@ -211,8 +212,36 @@ const trending = asyncHandler(async (req, res) => {
         );
 });
 
+// /post - search users, communities --
+const getSearch = asyncHandler(async (req, res) => {
+  const { query } = req.body;
+
+  if (!query) {
+    throw new ApiError(400, "Query is required");
+  }
+
+  const searchRegex = new RegExp(query, "i");
+
+  const [users, communities] = await Promise.all([
+    User.find({ fullName: searchRegex }).select("username avatar"),
+    Community.find({ communityName: searchRegex }).select("communityName avatar"),
+  ]);
+
+  // Check if both lists are empty to customize the message if needed
+  const hasResults = users.length > 0 || communities.length > 0;
+
+  res.status(200).json(
+    new ApiResponse(
+      200, 
+      { users, communities }, 
+      hasResults ? "Search results fetched" : "No matches found"
+    )
+  );
+});
+
 export {
     feed,
     exploreFeed,
-    trending
+    trending,
+    getSearch
 }

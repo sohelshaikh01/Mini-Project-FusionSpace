@@ -23,6 +23,7 @@ router.route("/register").post(
         }
     ]),
     registerUser);
+    
 // public
 router.route("/login").post(loginUser);
 

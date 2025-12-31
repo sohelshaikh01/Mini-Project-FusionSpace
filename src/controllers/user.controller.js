@@ -65,32 +65,47 @@ const registerUser = asyncHandler ( async(req, res) => {
         bio
     });
 
+    const refreshToken = await generateRefreshToken(user._id);
+
     const createdUser = await User.findById( user._id ).select(
         "-password -refreshToken"
     ).lean();
+
 
     if(!createdUser) {
         throw new ApiError(500, "Something went wrong while registration process");
     }
 
+    const options = {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+    }
+
     return res
-        .status(201)
-        .json(
-            new ApiResponse(201, createdUser, "User registered Successfully")
-        );
+    .status(200)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+        new ApiResponse( 200, {
+            user: createdUser,
+            refreshToken
+        },
+        "User Logged in Successfully"
+        )
+    );
+    
 });
 
 // --
 const loginUser = asyncHandler (async(req, res) => {
 
-    const { username, email, password } = req.body;
+    const { email, password } = req.body;
     
-    if(!(username || email)) {
-        throw new ApiError(400, "username or email is required");
+    if(!email) {
+        throw new ApiError(400, "email is required");
     }
     
     const user = await User.findOne({
-        $or: [{username: username.toLowerCase() }, {email}]
+        email
     });
     
     if(!user) {
@@ -103,7 +118,7 @@ const loginUser = asyncHandler (async(req, res) => {
         throw new ApiError(401, "Invalid user credentials");
     }
     
-   const refreshToken = await generateRefreshToken(user._id);
+    const refreshToken = await generateRefreshToken(user._id);
 
     const loggedInUser = await User.findById(user._id).select("-password -refreshToken");
 
@@ -295,7 +310,7 @@ const updateMyProfile = asyncHandler(async (req, res) => {
         );
 });
 
-// /get - auth present user
+// /get - clicked profile
 const getUserPosts = asyncHandler(async (req, res) => {
 	const { userId } = req.params;
 		

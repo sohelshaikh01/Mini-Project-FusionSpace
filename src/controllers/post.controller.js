@@ -12,9 +12,13 @@ import { Post } from "../models/post.models.js";
 import { Like } from "../models/like.models.js";
 
 
-// /get public + auth --
+// /get - all of user --
 const getPosts = asyncHandler(async (req, res) => {
     const userId = req.user._id;
+
+    if(!userId || !mongoose.Types.ObjectId.isValid(userId)) {
+        throw new ApiError(400, "Invalid User ID")
+    }
 
     // 1. Get pagination parameters
     const page = parseInt(req.query.page) || 1; 
@@ -289,12 +293,6 @@ const togglePublishStatus = asyncHandler( async(req, res) => {
         )
 });
 
-// /get - public posts only
-const searchPost = asyncHandler ( async(req, res) => {
-    // make route proper - add params
-
-});
-
 export {
     getPosts,
     publishAPost,
@@ -302,7 +300,6 @@ export {
     updateAPost,
     deleteAPost,
     togglePublishStatus,
-    searchPost
 };
 
 
