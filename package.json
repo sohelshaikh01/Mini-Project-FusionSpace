@@ -1,12 +1,12 @@
 {
-  "name": "fusionspace",
+  "name": "fusion-space-backend",
   "version": "1.0.0",
   "description": "Project that showcase Social Media Apps Features.",
   "main": "index.js",
   "type": "module",
   "scripts": {
     "dev": "nodemon -r dotenv/config --experimental-json-modules src/index.js",
-    "start": "node src/index.js"
+    "start": "node -r dotenv/config --experimental-json-modules src/index.js"
   },
   "author": "",
   "license": "ISC",

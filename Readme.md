@@ -1,31 +1,71 @@
 # FusionSpace Backend
 
-## Interative Social Media Application
+Interative Social Media Application
+This repository contains the backend code.
 
-This is backend of the **Social Media Application**
+## 🔥 Tech Stack
 
-## Installation Steps
+- Built Using Node.js, Express, MongoDB
+- Secure password hashing with bcryptjs
+- Middleware for authentication and error handling
+- Modular controller and route structure
+- MongoDB database connnection using Mongoose
 
-Clone Repo on your machine
+---
+
+## ⚙️ Installation Steps
+
+**Prerequisites**
+
+Ensure you have **Node.js** and **MongoDB** installed.
+
+Installation
+
 ```
-git clone repo-url
-```
-
-Install Dependencies
-```
+git clone <repo-url>
 npm install
 ```
 
-Run the App
+**Configure Environment Variables**
+
+Create a `.env` file in the directory and add the following. Put your values:
+
 ```
-node src/index.js
+PORT=8000
+
+MONGO_URI_LOCAL=your_local_mongodb_uri
+
+# change in src/db/index/js
+MONGO_URI_CLOUD=your_remote_mongodb_uri
+
+CORS_ORIGIN="frontend_url"
+
+NODE_ENV=""
+
+REFRESH_TOKEN_SECRET="your_secret"
+REFRESH_TOKEN_EXPIRY=7d
+
+# configure in cloudinary
+CLOUDINARY_ClOUD_KEY=your_key
+CLOUDINARY_API_KEY=your_key_number
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
-## Connect App with this locally
+**Run the App**
+
+```
+npm run start
+```
+
+---
+
+## Connect Frontend with this locally
 
 ```
 http://localhost:8000/api/v1
 ```
+
+---
 
 ## Routes of Applications
 
@@ -39,11 +79,15 @@ http://localhost:8000/api/v1
 - Community
 - Community Members
 
+---
+
 ## Collaboration and contributions
 
     Feel Free to clone and use repo.
     Suggestions are accepted.
 
-## Copyright guidelines.
+---
 
-All rights reserved @2025.
+## 📝 License
+
+This project is open-source and available under the MIT License.
