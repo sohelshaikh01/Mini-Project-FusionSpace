@@ -9,6 +9,7 @@ import {
 
 import { User } from "../models/user.models.js";
 import { Post } from "../models/post.models.js";
+import { Follow } from "../models/follows.models.js";
 
 
 const generateRefreshToken = async function(userId) {
@@ -232,8 +233,8 @@ const getUserProfile = asyncHandler(async (req, res) => {
 
     if (loggedInUserId) {
         const followRecord = await Follow.findOne({
-            followerId: loggedInUserId,
-            followingId: userId,
+            followerId: new mongoose.Types.ObjectId(loggedInUserId),
+            followingId: new mongoose.Types.ObjectId(userId),
         });
 
         if (followRecord) {

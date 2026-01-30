@@ -30,17 +30,16 @@ router.route("/login").post(loginUser);
 // auth
 router.route("/logout").post(verifyJWT, logoutUser);
 
-// auth
+// auth !- in use
 router.route("/me").get(verifyJWT, getCurrentUserProfile);
 
 // auth update profile
 router.route("/me").patch(verifyJWT, updateMyProfile);
 
 // public
-router.route("/:userId").get(getUserProfile);
+router.route("/:userId").get(verifyJWT, getUserProfile);
 
 // public - public posts only
 router.route("/:userId/posts").get(getUserPosts);
-
 
 export default router;
