@@ -40,7 +40,7 @@ MONGO_URI_CLOUD=your_remote_mongodb_uri
 
 CORS_ORIGIN="frontend_url"
 
-NODE_ENV=""
+NODE_ENV="development"
 
 REFRESH_TOKEN_SECRET="your_secret"
 REFRESH_TOKEN_EXPIRY=7d
